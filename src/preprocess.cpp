@@ -18,11 +18,11 @@ void Preprocess::set(bool feat_en, int lid_type, double bld, int pfilt_num) {
   point_filter_num = pfilt_num;
 }
 
-void Preprocess::process(const livox_ros_driver::CustomMsg::ConstPtr &msg,
-                         PointCloudXYZI::Ptr &pcl_out) {
-  avia_handler(msg);
-  *pcl_out = pl_surf;
-}
+// void Preprocess::process(const livox_ros_driver::CustomMsg::ConstPtr &msg,
+//                          PointCloudXYZI::Ptr &pcl_out) {
+//   avia_handler(msg);
+//   *pcl_out = pl_surf;
+// }
 
 void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg,
                          PointCloudXYZI::Ptr &pcl_out) {
@@ -42,56 +42,56 @@ void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg,
   *pcl_out = pl_surf;
 }
 
-void Preprocess::avia_handler(
-    const livox_ros_driver::CustomMsg::ConstPtr &msg) {
-  pl_surf.clear();
-  pl_corn.clear();
-  pl_full.clear();
-  int plsize = msg->point_num;
-  std::vector<bool> is_valid_pt(plsize, false);
+// void Preprocess::avia_handler(
+//     const livox_ros_driver::CustomMsg::ConstPtr &msg) {
+//   pl_surf.clear();
+//   pl_corn.clear();
+//   pl_full.clear();
+//   int plsize = msg->point_num;
+//   std::vector<bool> is_valid_pt(plsize, false);
 
-  pl_corn.reserve(plsize);
-  pl_surf.reserve(plsize);
-  pl_full.resize(plsize);
+//   pl_corn.reserve(plsize);
+//   pl_surf.reserve(plsize);
+//   pl_full.resize(plsize);
 
-  for (int i = 0; i < N_SCANS; i++) {
-    pl_buff[i].clear();
-    pl_buff[i].reserve(plsize);
-  }
-  uint valid_num = 0;
+//   for (int i = 0; i < N_SCANS; i++) {
+//     pl_buff[i].clear();
+//     pl_buff[i].reserve(plsize);
+//   }
+//   uint valid_num = 0;
 
-  for (uint i = 1; i < plsize; i++) {
-    if ((msg->points[i].line < N_SCANS) &&
-        ((msg->points[i].tag & 0x30) == 0x10 ||
-         (msg->points[i].tag & 0x30) == 0x00)) {
-      valid_num++;
-      if (i % point_filter_num == 0) {
-        pl_full[i].x = msg->points[i].x;
-        pl_full[i].y = msg->points[i].y;
-        pl_full[i].z = msg->points[i].z;
-        pl_full[i].intensity = msg->points[i].reflectivity;
-        pl_full[i].curvature =
-            msg->points[i].offset_time /
-            float(1000000); // use curvature as time of each laser points
+//   for (uint i = 1; i < plsize; i++) {
+//     if ((msg->points[i].line < N_SCANS) &&
+//         ((msg->points[i].tag & 0x30) == 0x10 ||
+//          (msg->points[i].tag & 0x30) == 0x00)) {
+//       valid_num++;
+//       if (i % point_filter_num == 0) {
+//         pl_full[i].x = msg->points[i].x;
+//         pl_full[i].y = msg->points[i].y;
+//         pl_full[i].z = msg->points[i].z;
+//         pl_full[i].intensity = msg->points[i].reflectivity;
+//         pl_full[i].curvature =
+//             msg->points[i].offset_time /
+//             float(1000000); // use curvature as time of each laser points
 
-        if ((abs(pl_full[i].x - pl_full[i - 1].x) > 1e-7) ||
-            (abs(pl_full[i].y - pl_full[i - 1].y) > 1e-7) ||
-            (abs(pl_full[i].z - pl_full[i - 1].z) > 1e-7) &&
-                (pl_full[i].x * pl_full[i].x + pl_full[i].y * pl_full[i].y +
-                     pl_full[i].z + pl_full[i].z >
-                 blind * blind)) {
-          is_valid_pt[i] = true;
-        }
-      }
-    }
-  }
+//         if ((abs(pl_full[i].x - pl_full[i - 1].x) > 1e-7) ||
+//             (abs(pl_full[i].y - pl_full[i - 1].y) > 1e-7) ||
+//             (abs(pl_full[i].z - pl_full[i - 1].z) > 1e-7) &&
+//                 (pl_full[i].x * pl_full[i].x + pl_full[i].y * pl_full[i].y +
+//                      pl_full[i].z + pl_full[i].z >
+//                  blind * blind)) {
+//           is_valid_pt[i] = true;
+//         }
+//       }
+//     }
+//   }
 
-  for (uint i = 1; i < plsize; i++) {
-    if (is_valid_pt[i]) {
-      pl_surf.points.push_back(pl_full[i]);
-    }
-  }
-}
+//   for (uint i = 1; i < plsize; i++) {
+//     if (is_valid_pt[i]) {
+//       pl_surf.points.push_back(pl_full[i]);
+//     }
+//   }
+// }
 
 void Preprocess::oust64_handler(const sensor_msgs::PointCloud2::ConstPtr &msg) {
   pl_surf.clear();
