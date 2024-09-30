@@ -3,41 +3,42 @@ common:
     imu_topic:  "/ouster/imu"
 
 preprocess:
-    lidar_type: 2                #1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for L515 LiDAR
+    #1 for Livox serials LiDAR (not compiled), 2 for my Ouster LiDAR (different config), 3 for L515 LiDAR (default).
+    lidar_type: 2                
     scan_line: 32
     blind: 1
-    point_filter_num: 1
-    calib_laser: true              # true for KITTI Odometry dataset
+    point_filter_num: 1             #~ how many scan deal once
+    calib_laser: false              # true for KITTI Odometry dataset
 
 mapping:
-    down_sample_size: 0.5
-    max_iteration: 3
-    voxel_size: 3.0
-    max_layer: 4                # 4 layer, 0, 1, 2, 3
-    layer_point_size: [5, 5, 5, 5, 5]
-    plannar_threshold: 0.01
-    max_points_size: 1000
-    max_cov_points_size: 1000
+    down_sample_size: 0.1           #~ downsize the (undistorted) input scan, not the map.
+    max_iteration: 3                #~ iEKF max iteration 
+    voxel_size: 0.25                #~ voxel size used for Hash and plane search
+    max_layer: 4                    #~ octree max depth.
+    layer_point_size: [20, 10, 10, 5, 5]        #~ how many points are used to "update" the voxel in each layer.
+    plannar_threshold: 0.01         #~ check plane, minimal eigen value
+    max_points_size: 200            #~ points in one voxel esceed this value, the voxel is no-update (n,q)+covariance
+    max_cov_points_size: 200        #~ points in one voxel esceed this value, the voxel's covariance is no-update
 
-noise_model:
-    ranging_cov: 0.04
-    angle_cov: 0.1
-    acc_cov_scale: 1.0
-    gyr_cov_scale: 0.5
+noise_model:                        #~ Lidar measure uncertainty modeling
+    ranging_cov: 0.02
+    angle_cov: 0.25
+    acc_cov_scale: 0.1
+    gyr_cov_scale: 0.1
 
 imu:
-    imu_en: false
+    imu_en: true                   #~ IMU is used for undistortion. fasle: use constant-velocity model; true: use imu propagation
     extrinsic_T: [ 0, 0, 0]
     extrinsic_R: [ 1, 0, 0, 
                    0, 1, 0, 
                    0, 0, 1]
 
 visualization:
-    pub_voxel_map: false
-    publish_max_voxel_layer: 1         # only publish 0,1,2 layer's plane
-    pub_point_cloud: false
-    dense_map_enable: false
-    pub_point_cloud_skip: 5             # publish one points per five points
+    pub_voxel_map: true
+    publish_max_voxel_layer: 1        # only publish 0,1,2 layer's plane
+    pub_point_cloud: true
+    dense_map_enable: false           #~ publish the downsampled or full (undistorted) scan
+    pub_point_cloud_skip: 5           # publish one points per five points
 
 Result:
     write_kitti_log: false

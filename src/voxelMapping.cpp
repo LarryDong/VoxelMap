@@ -314,8 +314,7 @@ bool sync_packages(MeasureGroup &meas) {
       return false;
     }
     meas.lidar_beg_time = time_buffer.front();
-    lidar_end_time = meas.lidar_beg_time +
-                     meas.lidar->points.back().curvature / double(1000);
+    lidar_end_time = meas.lidar_beg_time + meas.lidar->points.back().curvature / double(1000);
     lidar_pushed = true;
   }
 
@@ -341,8 +340,7 @@ bool sync_packages(MeasureGroup &meas) {
 }
 
 void publish_frame_world(const ros::Publisher &pubLaserCloudFullRes,const int point_skip) {
-  PointCloudXYZI::Ptr laserCloudFullRes(dense_map_en ? feats_undistort
-                                                     : feats_down_body);
+  PointCloudXYZI::Ptr laserCloudFullRes(dense_map_en ? feats_undistort : feats_down_body);
   int size = laserCloudFullRes->points.size();
   PointCloudXYZI::Ptr laserCloudWorld(new PointCloudXYZI(size, 1));
   for (int i = 0; i < size; i++) {
@@ -417,8 +415,7 @@ void publish_effect_world(const ros::Publisher &pubLaserCloudEffect,
 
   sensor_msgs::PointCloud2 laserCloudFullRes3;
   pcl::toROSMsg(*effect_cloud_world, laserCloudFullRes3);
-  laserCloudFullRes3.header.stamp =
-      ros::Time::now(); //.fromSec(last_timestamp_lidar);
+  laserCloudFullRes3.header.stamp = ros::Time::now(); //.fromSec(last_timestamp_lidar);
   laserCloudFullRes3.header.frame_id = "camera_init";
   pubLaserCloudEffect.publish(laserCloudFullRes3);
 }
@@ -433,8 +430,8 @@ void publish_no_effect(const ros::Publisher &pubLaserCloudNoEffect) {
 }
 
 void publish_effect(const ros::Publisher &pubLaserCloudEffect) {
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr effect_cloud_world(
-      new pcl::PointCloud<pcl::PointXYZRGB>);
+
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr effect_cloud_world(new pcl::PointCloud<pcl::PointXYZRGB>);
   PointCloudXYZI::Ptr laserCloudWorld(new PointCloudXYZI(effct_feat_num, 1));
   for (int i = 0; i < effct_feat_num; i++) {
     RGBpointBodyToWorld(&laserCloudOri->points[i], &laserCloudWorld->points[i]);
@@ -454,8 +451,7 @@ void publish_effect(const ros::Publisher &pubLaserCloudEffect) {
 
   sensor_msgs::PointCloud2 laserCloudFullRes3;
   pcl::toROSMsg(*laserCloudWorld, laserCloudFullRes3);
-  laserCloudFullRes3.header.stamp =
-      ros::Time::now(); //.fromSec(last_timestamp_lidar);
+  laserCloudFullRes3.header.stamp = ros::Time::now(); //.fromSec(last_timestamp_lidar);
   laserCloudFullRes3.header.frame_id = "camera_init";
   pubLaserCloudEffect.publish(laserCloudFullRes3);
 }
@@ -544,6 +540,8 @@ int main(int argc, char **argv) {
   nh.param<double>("preprocess/blind", p_pre->blind, 0.01);
   nh.param<bool>("preprocess/calib_laser", calib_laser, false);
   nh.param<int>("preprocess/lidar_type", p_pre->lidar_type, AVIA);
+  // #1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for L515 LiDAR
+  ROS_WARN_STREAM("Lidar type: 1. Livox; 2. Velodyne; 3. L515.  " << p_pre->lidar_type);
   nh.param<int>("preprocess/scan_line", p_pre->N_SCANS, 16);
   nh.param<int>("preprocess/point_filter_num", p_pre->point_filter_num, 2);
 
@@ -827,8 +825,7 @@ int main(int argc, char **argv) {
           pl.y = ptpl_list[i].normal(1);
           pl.z = ptpl_list[i].normal(2);
           effct_feat_num++;
-          float dis = (pi_world.x * pl.x + pi_world.y * pl.y +
-                       pi_world.z * pl.z + ptpl_list[i].d);
+          float dis = (pi_world.x * pl.x + pi_world.y * pl.y + pi_world.z * pl.z + ptpl_list[i].d);
           pl.intensity = dis;
           laserCloudOri->push_back(pi_body);
           corr_normvect->push_back(pl);

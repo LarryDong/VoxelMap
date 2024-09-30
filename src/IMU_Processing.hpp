@@ -89,8 +89,7 @@ private:
   bool imu_need_init_ = true;
 };
 
-ImuProcess::ImuProcess()
-    : b_first_frame_(true), imu_need_init_(true), start_timestamp_(-1) {
+ImuProcess::ImuProcess() : b_first_frame_(true), imu_need_init_(true), start_timestamp_(-1) {
   imu_en = true;
   init_iter_num = 1;
   cov_acc = V3D(0.1, 0.1, 0.1);
@@ -359,14 +358,12 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas,
 }
 
 // constant velocity model
-void ImuProcess::only_propag(const MeasureGroup &meas, StatesGroup &state_inout,
-                             PointCloudXYZI::Ptr &pcl_out) {
+void ImuProcess::only_propag(const MeasureGroup &meas, StatesGroup &state_inout, PointCloudXYZI::Ptr &pcl_out) {
   const double &pcl_beg_time = meas.lidar_beg_time;
 
   /*** sort point clouds by offset time ***/
   pcl_out = meas.lidar;
-  const double &pcl_end_time =
-      pcl_beg_time + pcl_out->points.back().curvature / double(1000);
+  const double &pcl_end_time = pcl_beg_time + pcl_out->points.back().curvature / double(1000);
 
   MD(DIM_STATE, DIM_STATE) F_x, cov_w;
   double dt = 0;
@@ -390,54 +387,38 @@ void ImuProcess::only_propag(const MeasureGroup &meas, StatesGroup &state_inout,
   F_x.block<3, 3>(0, 0) = Exp(state_inout.bias_g, -dt);
   F_x.block<3, 3>(0, 9) = Eye3d * dt;
   F_x.block<3, 3>(3, 6) = Eye3d * dt;
-  cov_w.block<3, 3>(9, 9).diagonal() =
-      cov_gyr * dt * dt; // for omega in constant model
-  cov_w.block<3, 3>(6, 6).diagonal() =
-      cov_acc * dt * dt; // for velocity in constant model
+  cov_w.block<3, 3>(9, 9).diagonal() = cov_gyr * dt * dt; // for omega in constant model
+  cov_w.block<3, 3>(6, 6).diagonal() = cov_acc * dt * dt; // for velocity in constant model
 
   state_inout.cov = F_x * state_inout.cov * F_x.transpose() + cov_w;
   state_inout.rot_end = state_inout.rot_end * Exp_f;
   state_inout.pos_end = state_inout.pos_end + state_inout.vel_end * dt;
 }
 
-void ImuProcess::Process(const MeasureGroup &meas, StatesGroup &stat,
-                         PointCloudXYZI::Ptr &cur_pcl_un_) {
-  double t1, t2, t3;
 
+void ImuProcess::Process(const MeasureGroup &meas, StatesGroup &stat, PointCloudXYZI::Ptr &cur_pcl_un_) {
+  double t1, t2, t3;
   if (meas.imu.empty() && imu_en) {
     return;
   }
   ROS_ASSERT(meas.lidar != nullptr);
-
+  
   if (imu_need_init_ && imu_en) {
     /// The very first lidar frame
     IMU_init(meas, stat, init_iter_num);
-
     imu_need_init_ = true;
-
     last_imu_ = meas.imu.back();
-
     if (init_iter_num > MAX_INI_COUNT) {
       cov_acc *= pow(G_m_s2 / mean_acc.norm(), 2);
       imu_need_init_ = false;
-      ROS_INFO("IMU Initials: Gravity: %.4f %.4f %.4f %.4f; state.bias_g: %.4f "
-               "%.4f %.4f; acc covarience: %.8f %.8f %.8f; gry covarience: "
-               "%.8f %.8f %.8f",
-               stat.gravity[0], stat.gravity[1], stat.gravity[2],
-               mean_acc.norm(), cov_acc_scale[0], cov_acc_scale[1],
-               cov_acc_scale[2], cov_acc[0], cov_acc[1], cov_acc[2], cov_gyr[0],
-               cov_gyr[1], cov_gyr[2]);
+      ROS_INFO("IMU Initials: Gravity: %.4f %.4f %.4f %.4f; state.bias_g: %.4f %.4f %.4f; acc covarience: %.8f %.8f %.8f; gry covarience: %.8f %.8f %.8f",
+               stat.gravity[0], stat.gravity[1], stat.gravity[2], mean_acc.norm(), cov_acc_scale[0], cov_acc_scale[1], cov_acc_scale[2], cov_acc[0], cov_acc[1], cov_acc[2], cov_gyr[0], cov_gyr[1], cov_gyr[2]);
       cov_acc = Eye3d * cov_acc_scale;
       cov_gyr = Eye3d * cov_gyr_scale;
       // cout<<"mean acc: "<<mean_acc<<" acc measures in word
       // frame:"<<state.rot_end.transpose()*mean_acc<<endl;
-      ROS_INFO("IMU Initials: Gravity: %.4f %.4f %.4f %.4f; state.bias_g: %.4f "
-               "%.4f %.4f; acc covarience: %.8f %.8f %.8f; gry covarience: "
-               "%.8f %.8f %.8f",
-               stat.gravity[0], stat.gravity[1], stat.gravity[2],
-               mean_acc.norm(), cov_bias_gyr[0], cov_bias_gyr[1],
-               cov_bias_gyr[2], cov_acc[0], cov_acc[1], cov_acc[2], cov_gyr[0],
-               cov_gyr[1], cov_gyr[2]);
+      ROS_INFO("IMU Initials: Gravity: %.4f %.4f %.4f %.4f; state.bias_g: %.4f %.4f %.4f; acc covarience: %.8f %.8f %.8f; gry covarience: %.8f %.8f %.8f",
+               stat.gravity[0], stat.gravity[1], stat.gravity[2], mean_acc.norm(), cov_bias_gyr[0], cov_bias_gyr[1], cov_bias_gyr[2], cov_acc[0], cov_acc[1], cov_acc[2], cov_gyr[0], cov_gyr[1], cov_gyr[2]);
     }
 
     return;

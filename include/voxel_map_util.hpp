@@ -515,8 +515,8 @@ public:
   }
 };
 
-void mapJet(double v, double vmin, double vmax, uint8_t &r, uint8_t &g,
-            uint8_t &b) {
+//~ Set color based on v.
+void mapJet(double v, double vmin, double vmax, uint8_t &r, uint8_t &g, uint8_t &b) {
   r = 255;
   g = 255;
   b = 255;
@@ -971,13 +971,9 @@ void BuildResidualListNormal(
   }
 }
 
-void CalcVectQuation(const Eigen::Vector3d &x_vec, const Eigen::Vector3d &y_vec,
-                     const Eigen::Vector3d &z_vec,
-                     geometry_msgs::Quaternion &q) {
-
+void CalcVectQuation(const Eigen::Vector3d &x_vec, const Eigen::Vector3d &y_vec, const Eigen::Vector3d &z_vec, geometry_msgs::Quaternion &q) {
   Eigen::Matrix3d rot;
-  rot << x_vec(0), x_vec(1), x_vec(2), y_vec(0), y_vec(1), y_vec(2), z_vec(0),
-      z_vec(1), z_vec(2);
+  rot << x_vec(0), x_vec(1), x_vec(2), y_vec(0), y_vec(1), y_vec(2), z_vec(0), z_vec(1), z_vec(2);
   Eigen::Matrix3d rotation = rot.transpose();
   Eigen::Quaterniond eq(rotation);
   q.w = eq.w();
@@ -1032,8 +1028,7 @@ void pubSinglePlane(visualization_msgs::MarkerArray &plane_pub,
   plane.pose.position.y = single_plane.center[1];
   plane.pose.position.z = single_plane.center[2];
   geometry_msgs::Quaternion q;
-  CalcVectQuation(single_plane.x_normal, single_plane.y_normal,
-                  single_plane.normal, q);
+  CalcVectQuation(single_plane.x_normal, single_plane.y_normal, single_plane.normal, q);
   plane.pose.orientation = q;
   plane.scale.x = 3 * sqrt(single_plane.max_eigen_value);
   plane.scale.y = 3 * sqrt(single_plane.mid_eigen_value);

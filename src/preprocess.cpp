@@ -24,8 +24,7 @@ void Preprocess::set(bool feat_en, int lid_type, double bld, int pfilt_num) {
 //   *pcl_out = pl_surf;
 // }
 
-void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg,
-                         PointCloudXYZI::Ptr &pcl_out) {
+void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out) {
   switch (lidar_type) {
   case L515:
     l515_handler(msg);
@@ -33,6 +32,7 @@ void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg,
 
   case VELO16:
     velodyne_handler(msg);
+    ROS_INFO("--> In process. Process velodyne_handler");
     break;
 
   default:
@@ -158,8 +158,7 @@ void Preprocess::l515_handler(const sensor_msgs::PointCloud2::ConstPtr &msg) {
 
 #define MAX_LINE_NUM 64
 
-void Preprocess::velodyne_handler(
-    const sensor_msgs::PointCloud2::ConstPtr &msg) {
+void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg) {
   pl_surf.clear();
   pl_corn.clear();
   pl_full.clear();
@@ -174,19 +173,35 @@ void Preprocess::velodyne_handler(
     added_pt.y = pl_orig.points[i].y;
     added_pt.z = pl_orig.points[i].z;
     added_pt.intensity = pl_orig.points[i].intensity;
-    float angle = atan(added_pt.z / sqrt(added_pt.x * added_pt.x +
-                                         added_pt.y * added_pt.y)) *
-                  180 / M_PI;
-    int scanID = 0;
-    if (angle >= -8.83)
-      scanID = int((2 - angle) * 3.0 + 0.5);
-    else
-      scanID = N_SCANS / 2 + int((-8.83 - angle) * 2.0 + 0.5);
 
-    // use [0 50]  > 50 remove outlies
-    if (angle > 2 || angle < -24.33 || scanID > 50 || scanID < 0) {
-      continue;
-    }
+    //~ TODO: change angle for LiDAR
+    // float angle = atan(added_pt.z / sqrt(added_pt.x * added_pt.x + added_pt.y * added_pt.y)) * 180 / M_PI;
+    // int scanID = 0;
+    // if (angle >= -8.83)
+    //   scanID = int((2 - angle) * 3.0 + 0.5);
+    // else
+    //   scanID = N_SCANS / 2 + int((-8.83 - angle) * 2.0 + 0.5);
+
+    // // use [0 50]  > 50 remove outlies
+    // if (angle > 2 || angle < -24.33 || scanID > 50 || scanID < 0) {
+    //   continue;
+    // }
+    //~ TODO: end.
+    
+    //~ changed to my own ouster-lidar
+    // 32 line, angle from: -22.5 ~ 22.5 
+    // float angle = atan(added_pt.z / sqrt(added_pt.x * added_pt.x + added_pt.y * added_pt.y)) * 180 / M_PI;
+    // const float angle_max = 22.5;
+    // const float angle_min = -22.5;
+    // const float scan_number = 32;
+    // const float ver_resolution = (angle_max - angle_min) / scan_number;
+    // int scanID = 0;
+    // if (angle > angle_max + 2 || angle < angle_min - 2)
+    //   ROS_ERROR("Unexpected measuer");
+    // else{
+
+    // }
+
     pl_surf.push_back(added_pt);
   }
 }
