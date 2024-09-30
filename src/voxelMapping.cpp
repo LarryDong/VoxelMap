@@ -247,24 +247,6 @@ void standard_pcl_cbk(const sensor_msgs::PointCloud2::ConstPtr &msg) {
     sig_buffer.notify_all();
 }
 
-// void livox_pcl_cbk(const livox_ros_driver::CustomMsg::ConstPtr &msg) {
-//   mtx_buffer.lock();
-//   // cout << "got feature" << endl;
-//   if (msg->header.stamp.toSec() < last_timestamp_lidar) {
-//     ROS_ERROR("lidar loop back, clear buffer");
-//     lidar_buffer.clear();
-//   }
-//   // ROS_INFO("get point cloud at time: %.6f", msg->header.stamp.toSec());
-//   PointCloudXYZI::Ptr ptr(new PointCloudXYZI());
-//   p_pre->process(msg, ptr);
-//   lidar_buffer.push_back(ptr);
-//   time_buffer.push_back(msg->header.stamp.toSec());
-//   last_timestamp_lidar = msg->header.stamp.toSec();
-
-//   mtx_buffer.unlock();
-//   sig_buffer.notify_all();
-// }
-
 void imu_cbk(const sensor_msgs::Imu::ConstPtr &msg_in) {
     publish_count++;
     sensor_msgs::Imu::Ptr msg(new sensor_msgs::Imu(*msg_in));
@@ -344,8 +326,7 @@ void publish_frame_world(const ros::Publisher &pubLaserCloudFullRes,const int po
     int size = laserCloudFullRes->points.size();
     PointCloudXYZI::Ptr laserCloudWorld(new PointCloudXYZI(size, 1));
     for (int i = 0; i < size; i++) {
-        RGBpointBodyToWorld(&laserCloudFullRes->points[i],
-                                                &laserCloudWorld->points[i]);
+        RGBpointBodyToWorld(&laserCloudFullRes->points[i], &laserCloudWorld->points[i]);
     }
     PointCloudXYZI::Ptr laserCloudWorldPub(new PointCloudXYZI);
     for (int i = 0; i < size; i += point_skip) {
@@ -353,80 +334,9 @@ void publish_frame_world(const ros::Publisher &pubLaserCloudFullRes,const int po
     }
     sensor_msgs::PointCloud2 laserCloudmsg;
     pcl::toROSMsg(*laserCloudWorldPub, laserCloudmsg);
-    laserCloudmsg.header.stamp =
-            ros::Time::now(); //.fromSec(last_timestamp_lidar);
+    laserCloudmsg.header.stamp = ros::Time::now(); //.fromSec(last_timestamp_lidar);
     laserCloudmsg.header.frame_id = "camera_init";
     pubLaserCloudFullRes.publish(laserCloudmsg);
-}
-
-void publish_effect_world(const ros::Publisher &pubLaserCloudEffect,
-                                                    const ros::Publisher &pubPointWithCov,
-                                                    const std::vector<ptpl> &ptpl_list) {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr effect_cloud_world(
-            new pcl::PointCloud<pcl::PointXYZRGB>);
-    PointCloudXYZI::Ptr laserCloudWorld(new PointCloudXYZI(effct_feat_num, 1));
-    visualization_msgs::MarkerArray ma_line;
-    visualization_msgs::Marker m_line;
-    m_line.type = visualization_msgs::Marker::LINE_LIST;
-    m_line.action = visualization_msgs::Marker::ADD;
-    m_line.ns = "lines";
-    m_line.color.a = 0.5; // Don't forget to set the alpha!
-    m_line.color.r = 1.0;
-    m_line.color.g = 1.0;
-    m_line.color.b = 1.0;
-    m_line.scale.x = 0.01;
-    m_line.pose.orientation.w = 1.0;
-    m_line.header.frame_id = "camera_init";
-    for (int i = 0; i < ptpl_list.size(); i++) {
-        Eigen::Vector3d p_c = ptpl_list[i].point;
-        Eigen::Vector3d p_w = state.rot_end * (p_c) + state.pos_end;
-        pcl::PointXYZRGB pi;
-        pi.x = p_w[0];
-        pi.y = p_w[1];
-        pi.z = p_w[2];
-        // float v = laserCloudWorld->points[i].intensity / 200;
-        // v = 1.0 - v;
-        // uint8_t r, g, b;
-        // mapJet(v, 0, 1, r, g, b);
-        // pi.r = r;
-        // pi.g = g;
-        // pi.b = b;
-        effect_cloud_world->points.push_back(pi);
-        m_line.points.clear();
-        geometry_msgs::Point p;
-        p.x = p_w[0];
-        p.y = p_w[1];
-        p.z = p_w[2];
-        m_line.points.push_back(p);
-        p.x = ptpl_list[i].center(0);
-        p.y = ptpl_list[i].center(1);
-        p.z = ptpl_list[i].center(2);
-        m_line.points.push_back(p);
-        ma_line.markers.push_back(m_line);
-        m_line.id++;
-    }
-    int max_num = 20000;
-    for (int i = ptpl_list.size(); i < max_num; i++) {
-        m_line.color.a = 0;
-        ma_line.markers.push_back(m_line);
-        m_line.id++;
-    }
-    pubPointWithCov.publish(ma_line);
-
-    sensor_msgs::PointCloud2 laserCloudFullRes3;
-    pcl::toROSMsg(*effect_cloud_world, laserCloudFullRes3);
-    laserCloudFullRes3.header.stamp = ros::Time::now(); //.fromSec(last_timestamp_lidar);
-    laserCloudFullRes3.header.frame_id = "camera_init";
-    pubLaserCloudEffect.publish(laserCloudFullRes3);
-}
-
-void publish_no_effect(const ros::Publisher &pubLaserCloudNoEffect) {
-    sensor_msgs::PointCloud2 laserCloudFullRes3;
-    pcl::toROSMsg(*laserCloudNoeffect, laserCloudFullRes3);
-    laserCloudFullRes3.header.stamp =
-            ros::Time::now(); //.fromSec(last_timestamp_lidar);
-    laserCloudFullRes3.header.frame_id = "camera_init";
-    pubLaserCloudNoEffect.publish(laserCloudFullRes3);
 }
 
 void publish_effect(const ros::Publisher &pubLaserCloudEffect) {
@@ -485,13 +395,6 @@ void publish_odometry(const ros::Publisher &pubOdomAftMapped) {
     br.sendTransform(tf::StampedTransform(transform, odomAftMapped.header.stamp,
                                                                                 "camera_init", "aft_mapped"));
     pubOdomAftMapped.publish(odomAftMapped);
-}
-
-void publish_mavros(const ros::Publisher &mavros_pose_publisher) {
-    msg_body_pose.header.stamp = ros::Time::now();
-    msg_body_pose.header.frame_id = "camera_odom_frame";
-    set_posestamp(msg_body_pose.pose);
-    mavros_pose_publisher.publish(msg_body_pose);
 }
 
 void publish_path(const ros::Publisher pubPath) {
