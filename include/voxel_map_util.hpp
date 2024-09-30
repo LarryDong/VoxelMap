@@ -820,7 +820,8 @@ void GetUpdatePlane(const OctoTree *current_octo, const int pub_max_voxel_layer,
 // }
 
 void BuildResidualListOMP(const unordered_map<VOXEL_LOC, OctoTree *> &voxel_map,
-                                                    const double voxel_size, const double sigma_num,
+                                                    const double voxel_size, 
+                                                    const double sigma_num,
                                                     const int max_layer,
                                                     const std::vector<pointWithCov> &pv_list,
                                                     std::vector<ptpl> &ptpl_list,
@@ -980,6 +981,13 @@ void CalcVectQuation(const Eigen::Vector3d &x_vec, const Eigen::Vector3d &y_vec,
     q.x = eq.x();
     q.y = eq.y();
     q.z = eq.z();
+    double norm = q.w*q.w+q.x*q.x+q.y*q.y+q.z*q.z;
+    if(norm<0.99){
+        ROS_INFO_STREAM("Norm: " << norm);
+        ROS_INFO_STREAM("Rot matrix: " << rot);
+        ROS_INFO_STREAM("x_vec: " << x_vec);
+        ROS_INFO_STREAM("y_vec: " << y_vec);
+    }
 }
 
 void CalcQuation(const Eigen::Vector3d &vec, const int axis,
@@ -1029,6 +1037,10 @@ void pubSinglePlane(visualization_msgs::MarkerArray &plane_pub,
     plane.pose.position.z = single_plane.center[2];
     geometry_msgs::Quaternion q;
     CalcVectQuation(single_plane.x_normal, single_plane.y_normal, single_plane.normal, q);
+    double q_norm = q.x*q.x + q.y * q.y + q.z*q.z + q.w*q.w;
+    ROS_INFO_STREAM("q: " << q_norm);           //TODO: ISSUE: q is not 1.
+    // if(q < 0.99)
+    //     ROS_INF
     plane.pose.orientation = q;
     plane.scale.x = 3 * sqrt(single_plane.max_eigen_value);
     plane.scale.y = 3 * sqrt(single_plane.mid_eigen_value);
@@ -1101,7 +1113,7 @@ void pubVoxelMap(const std::unordered_map<VOXEL_LOC, OctoTree *> &voxel_map,
         if (pub_plane_list[i].is_plane) {
             alpha = use_alpha;
         } else {
-            alpha = 0;
+            alpha = 0;          //~ cool, use "alpha" to ignore not-plane voxel
         }
         pubSinglePlane(voxel_plane, "plane", pub_plane_list[i], alpha, plane_rgb);
     }

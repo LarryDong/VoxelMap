@@ -148,18 +148,11 @@ inline void dump_lio_state_to_log(FILE *fp) {
     V3D rot_ang(Log(state.rot_end));
     fprintf(fp, "%lf ", Measures.lidar_beg_time - first_lidar_time);
     fprintf(fp, "%lf %lf %lf ", rot_ang(0), rot_ang(1), rot_ang(2)); // Angle
-    fprintf(fp, "%lf %lf %lf ", state.pos_end(0), state.pos_end(1),
-                    state.pos_end(2)); // Pos
-    fprintf(fp, "%lf %lf %lf ", state.vel_end(0), state.vel_end(1),
-                    state.vel_end(2)); // Vel
-    fprintf(fp, "%lf %lf %lf ", state.bias_g(0), state.bias_g(1),
-                    state.bias_g(2)); // omega
-    fprintf(fp, "%lf %lf %lf %lf ", scan_match_time, solve_time,
-                    map_incremental_time,
-                    total_time); // scan match, ekf, map incre, total
-    fprintf(fp, "%d %d %d", feats_undistort->points.size(),
-                    feats_down_body->points.size(),
-                    effct_feat_num); // raw point number, effect number
+    fprintf(fp, "%lf %lf %lf ", state.pos_end(0), state.pos_end(1), state.pos_end(2)); // Pos
+    fprintf(fp, "%lf %lf %lf ", state.vel_end(0), state.vel_end(1), state.vel_end(2)); // Vel
+    fprintf(fp, "%lf %lf %lf ", state.bias_g(0), state.bias_g(1), state.bias_g(2)); // omega
+    fprintf(fp, "%lf %lf %lf %lf ", scan_match_time, solve_time, map_incremental_time, total_time); // scan match, ekf, map incre, total
+    fprintf(fp, "%d %d %d", feats_undistort->points.size(), feats_down_body->points.size(), effct_feat_num); // raw point number, effect number
     fprintf(fp, "\r\n");
     fflush(fp);
 }
@@ -899,7 +892,7 @@ int main(int argc, char **argv) {
                 pv.cov = cov;
                 pv_list.push_back(pv);
             }
-            std::sort(pv_list.begin(), pv_list.end(), var_contrast);
+            std::sort(pv_list.begin(), pv_list.end(), var_contrast);    //~ TODO: Why need a sort? Add smaller-cov point first?
 
             //~ TODO: 更新VoxelMap
             updateVoxelMap(pv_list, max_voxel_size, max_layer, layer_size, max_points_size, max_points_size, min_eigen_value, voxel_map);
@@ -925,15 +918,12 @@ int main(int argc, char **argv) {
             pub_cloud.header.stamp =
                     ros::Time::now(); //.fromSec(last_timestamp_lidar);
             pub_cloud.header.frame_id = "camera_init";
-            if (publish_point_cloud) {
-                publish_frame_world(pubLaserCloudFullRes, pub_point_cloud_skip);
-            }
 
-            if (publish_voxel_map) {
-                pubVoxelMap(voxel_map, publish_max_voxel_layer, voxel_map_pub);
-            }
-
-            publish_effect(pubLaserCloudEffect);
+            if (publish_point_cloud) 
+                publish_frame_world(pubLaserCloudFullRes, pub_point_cloud_skip);    //~ publish registered piont cloud, dense or not depend on `dense_map_en`
+            if (publish_voxel_map)
+                pubVoxelMap(voxel_map, publish_max_voxel_layer, voxel_map_pub);     //~ publish the full voxel map, with planes
+            publish_effect(pubLaserCloudEffect);            //~ effect is downsampled "featured" points.
 
             frame_num++;
             mean_raw_points = mean_raw_points * (frame_num - 1) / frame_num + (double)(feats_undistort->size()) / frame_num;

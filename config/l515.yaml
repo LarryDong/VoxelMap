@@ -36,7 +36,7 @@ visualization:
     pub_voxel_map: true
     publish_max_voxel_layer: 1         # only publish 0,1 layer's plane
     pub_point_cloud: true
-    dense_map_enable: true
+    dense_map_enable: false            #~ publish dense or sparse point. Sparse is the feature point.
     pub_point_cloud_skip: 1            # publish one points per five points
 
 Result:
