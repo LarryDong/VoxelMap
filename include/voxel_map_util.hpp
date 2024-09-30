@@ -184,7 +184,9 @@ public:
 
             plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
             plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid), evecs.real()(2, evalsMid);
-            plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax), evecs.real()(2, evalsMax);
+            // plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax), evecs.real()(2, evalsMax);
+            plane->x_normal = crossProduct(plane->y_normal, plane->normal);
+
             plane->min_eigen_value = evalsReal(evalsMin);
             plane->mid_eigen_value = evalsReal(evalsMid);
             plane->max_eigen_value = evalsReal(evalsMax);
@@ -221,12 +223,11 @@ public:
                 plane->is_update = true;
             }
             plane->is_plane = false;
-            plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin),
-                    evecs.real()(2, evalsMin);
-            plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid),
-                    evecs.real()(2, evalsMid);
-            plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax),
-                    evecs.real()(2, evalsMax);
+            plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
+            plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid), evecs.real()(2, evalsMid);
+            // plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax), evecs.real()(2, evalsMax);
+            plane->x_normal = crossProduct(plane->y_normal, plane->normal);
+
             plane->min_eigen_value = evalsReal(evalsMin);
             plane->mid_eigen_value = evalsReal(evalsMid);
             plane->max_eigen_value = evalsReal(evalsMax);
@@ -267,12 +268,11 @@ public:
         Eigen::Vector3d evecMid = evecs.real().col(evalsMid);
         Eigen::Vector3d evecMax = evecs.real().col(evalsMax);
         if (evalsReal(evalsMin) < planer_threshold_) {
-            plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin),
-                    evecs.real()(2, evalsMin);
-            plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid),
-                    evecs.real()(2, evalsMid);
-            plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax),
-                    evecs.real()(2, evalsMax);
+            plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
+            plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid), evecs.real()(2, evalsMid);
+            // plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax), evecs.real()(2, evalsMax);
+            plane->x_normal = crossProduct(plane->y_normal, plane->normal);
+
             plane->min_eigen_value = evalsReal(evalsMin);
             plane->mid_eigen_value = evalsReal(evalsMid);
             plane->max_eigen_value = evalsReal(evalsMax);
@@ -285,12 +285,11 @@ public:
             plane->is_update = true;
         } else {
             //~ 这段代码和上面if的几乎一样？只有is_plane这一行是false
-            plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin),
-                    evecs.real()(2, evalsMin);
-            plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid),
-                    evecs.real()(2, evalsMid);
-            plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax),
-                    evecs.real()(2, evalsMax);
+            plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
+            plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid), evecs.real()(2, evalsMid);
+            // plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax), evecs.real()(2, evalsMax);
+            plane->x_normal = crossProduct(plane->y_normal, plane->normal);
+
             plane->min_eigen_value = evalsReal(evalsMin);
             plane->mid_eigen_value = evalsReal(evalsMid);
             plane->max_eigen_value = evalsReal(evalsMax);
@@ -981,50 +980,17 @@ void CalcVectQuation(const Eigen::Vector3d &x_vec, const Eigen::Vector3d &y_vec,
     q.x = eq.x();
     q.y = eq.y();
     q.z = eq.z();
-    double norm = q.w*q.w+q.x*q.x+q.y*q.y+q.z*q.z;
-    if(norm<0.99){
-        ROS_INFO_STREAM("Norm: " << norm);
-        ROS_INFO_STREAM("Rot matrix: " << rot);
-        ROS_INFO_STREAM("x_vec: " << x_vec);
-        ROS_INFO_STREAM("y_vec: " << y_vec);
-    }
+    // double norm = q.w*q.w+q.x*q.x+q.y*q.y+q.z*q.z;
+    // if(norm<0.99){
+    //     ROS_INFO_STREAM("Norm: " << norm);
+    //     ROS_INFO_STREAM("Rot matrix: " << rot);
+    //     ROS_INFO_STREAM("x_vec: " << x_vec);
+    //     ROS_INFO_STREAM("y_vec: " << y_vec);
+    // }
 }
 
-void CalcQuation(const Eigen::Vector3d &vec, const int axis,
-                 geometry_msgs::Quaternion &q) {
-    Eigen::Vector3d x_body = vec;
-    Eigen::Vector3d y_body(1, 1, 0);
-    if (x_body(2) != 0) {
-        y_body(2) = -(y_body(0) * x_body(0) + y_body(1) * x_body(1)) / x_body(2);
-    } else {
-        if (x_body(1) != 0) {
-            y_body(1) = -(y_body(0) * x_body(0)) / x_body(1);
-        } else {
-            y_body(0) = 0;
-        }
-    }
-    y_body.normalize();
-    Eigen::Vector3d z_body = x_body.cross(y_body);
-    Eigen::Matrix3d rot;
+void pubSinglePlane(visualization_msgs::MarkerArray &plane_pub, const std::string plane_ns, const Plane &single_plane, const float alpha, const Eigen::Vector3d rgb) {
 
-    rot << x_body(0), x_body(1), x_body(2), y_body(0), y_body(1), y_body(2),
-            z_body(0), z_body(1), z_body(2);
-    Eigen::Matrix3d rotation = rot.transpose();
-    if (axis == 2) {
-        Eigen::Matrix3d rot_inc;
-        rot_inc << 0, 0, 1, 0, 1, 0, -1, 0, 0;
-        rotation = rotation * rot_inc;
-    }
-    Eigen::Quaterniond eq(rotation);
-    q.w = eq.w();
-    q.x = eq.x();
-    q.y = eq.y();
-    q.z = eq.z();
-}
-
-void pubSinglePlane(visualization_msgs::MarkerArray &plane_pub,
-                                        const std::string plane_ns, const Plane &single_plane,
-                                        const float alpha, const Eigen::Vector3d rgb) {
     visualization_msgs::Marker plane;
     plane.header.frame_id = "camera_init";
     plane.header.stamp = ros::Time();
@@ -1035,12 +1001,9 @@ void pubSinglePlane(visualization_msgs::MarkerArray &plane_pub,
     plane.pose.position.x = single_plane.center[0];
     plane.pose.position.y = single_plane.center[1];
     plane.pose.position.z = single_plane.center[2];
+
     geometry_msgs::Quaternion q;
     CalcVectQuation(single_plane.x_normal, single_plane.y_normal, single_plane.normal, q);
-    double q_norm = q.x*q.x + q.y * q.y + q.z*q.z + q.w*q.w;
-    ROS_INFO_STREAM("q: " << q_norm);           //TODO: ISSUE: q is not 1.
-    // if(q < 0.99)
-    //     ROS_INF
     plane.pose.orientation = q;
     plane.scale.x = 3 * sqrt(single_plane.max_eigen_value);
     plane.scale.y = 3 * sqrt(single_plane.mid_eigen_value);
@@ -1053,8 +1016,7 @@ void pubSinglePlane(visualization_msgs::MarkerArray &plane_pub,
     plane_pub.markers.push_back(plane);
 }
 
-void pubNoPlaneMap(const std::unordered_map<VOXEL_LOC, OctoTree *> &feat_map,
-                   const ros::Publisher &plane_map_pub) {
+void pubNoPlaneMap(const std::unordered_map<VOXEL_LOC, OctoTree *> &feat_map, const ros::Publisher &plane_map_pub) {
     int id = 0;
     ros::Rate loop(500);
     float use_alpha = 0.8;
@@ -1070,9 +1032,7 @@ void pubNoPlaneMap(const std::unordered_map<VOXEL_LOC, OctoTree *> &feat_map,
                             if (temp_octo_tree->leaves_[j] != nullptr) {
                                 if (!temp_octo_tree->leaves_[j]->plane_ptr_->is_plane) {
                                     Eigen::Vector3d plane_rgb(1, 1, 1);
-                                    pubSinglePlane(voxel_plane, "no_plane",
-                                 *(temp_octo_tree->leaves_[j]->plane_ptr_),
-                                 use_alpha, plane_rgb);
+                                    pubSinglePlane(voxel_plane, "no_plane", *(temp_octo_tree->leaves_[j]->plane_ptr_), use_alpha, plane_rgb);
                                 }
                             }
                         }

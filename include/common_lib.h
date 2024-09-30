@@ -12,6 +12,9 @@
 #include <voxel_map/Pose6D.h>
 #include <voxel_map/States.h>
 
+#include <array>
+#include <cmath>
+
 using namespace std;
 using namespace Eigen;
 
@@ -232,5 +235,15 @@ bool esti_plane(Matrix<T, 4, 1> &pca_result, const PointVector &point,
     pca_result(3) = 1.0 / n;
     return true;
 }
+
+
+inline V3D crossProduct(V3D x, V3D y){
+    V3D z;
+    z(0) = x(1)*y(2) - x(2)*y(1);
+    z(1) = x(2)*y(0) - x(0)*y(2);
+    z(2) = x(0)*y(1) - x(1)*y(0);
+    return z;
+}
+
 
 #endif

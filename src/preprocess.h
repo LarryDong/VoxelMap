@@ -10,7 +10,7 @@ using namespace std;
 typedef pcl::PointXYZINormal PointType;
 typedef pcl::PointCloud<PointType> PointCloudXYZI;
 
-enum LID_TYPE { AVIA = 1, VELO16, L515, OUSTER64 }; //{1, 2, 3}
+enum LID_TYPE { AVIA = 1, VELO16, L515, OUSTER }; //{1, 2, 3}
 
 namespace velodyne_ros {
 struct EIGEN_ALIGN16 Point {
@@ -33,7 +33,7 @@ struct EIGEN_ALIGN16 Point {
     float intensity;
     uint32_t t;
     uint16_t reflectivity;
-    uint8_t ring;
+    uint16_t ring;
     uint16_t ambient;
     uint32_t range;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -42,16 +42,16 @@ struct EIGEN_ALIGN16 Point {
 
 // clang-format off
 POINT_CLOUD_REGISTER_POINT_STRUCT(ouster_ros::Point,
-        (float, x, x)
-        (float, y, y)
-        (float, z, z)
-        (float, intensity, intensity)
-        // use std::uint32_t to avoid conflicting with pcl::uint32_t
-        (std::uint32_t, t, t)
-        (std::uint16_t, reflectivity, reflectivity)
-        (std::uint8_t, ring, ring)
-        (std::uint16_t, ambient, ambient)
-        (std::uint32_t, range, range)
+    (float, x, x)
+    (float, y, y)
+    (float, z, z)
+    (float, intensity, intensity)
+    // use std::uint32_t to avoid conflicting with pcl::uint32_t
+    (std::uint32_t, t, t)
+    (std::uint16_t, reflectivity, reflectivity)
+    (std::uint16_t, ring, ring)
+    (std::uint16_t, ambient, ambient)
+    (std::uint32_t, range, range)
 )
 
 class Preprocess

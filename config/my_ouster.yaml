@@ -3,8 +3,8 @@ common:
     imu_topic:  "/ouster/imu"
 
 preprocess:
-    #1 for Livox serials LiDAR (not compiled), 2 for my Ouster LiDAR (different config), 3 for L515 LiDAR (default).
-    lidar_type: 2                
+    #1 for Livox serials LiDAR (not compiled), 2 velodyne, 3 for L515 LiDAR (default), 4 My OUSTER
+    lidar_type: 4
     scan_line: 32
     blind: 1
     point_filter_num: 1             #~ how many scan deal once

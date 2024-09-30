@@ -179,12 +179,8 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, StatesGroup &state_inout,
         mean_acc += (cur_acc - mean_acc) / N;
         mean_gyr += (cur_gyr - mean_gyr) / N;
 
-        cov_acc = cov_acc * (N - 1.0) / N +
-                            (cur_acc - mean_acc).cwiseProduct(cur_acc - mean_acc) *
-                                    (N - 1.0) / (N * N);
-        cov_gyr = cov_gyr * (N - 1.0) / N +
-                            (cur_gyr - mean_gyr).cwiseProduct(cur_gyr - mean_gyr) *
-                                    (N - 1.0) / (N * N);
+        cov_acc = cov_acc * (N - 1.0) / N + (cur_acc - mean_acc).cwiseProduct(cur_acc - mean_acc) * (N - 1.0) / (N * N);
+        cov_gyr = cov_gyr * (N - 1.0) / N + (cur_gyr - mean_gyr).cwiseProduct(cur_gyr - mean_gyr) * (N - 1.0) / (N * N);
 
         // cout<<"acc norm: "<<cur_acc.norm()<<" "<<mean_acc.norm()<<endl;
 
@@ -192,9 +188,7 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, StatesGroup &state_inout,
     }
 
     state_inout.gravity = -mean_acc / mean_acc.norm() * G_m_s2;
-
-    state_inout.rot_end =
-            Eye3d; // Exp(mean_acc.cross(V3D(0, 0, -1 / scale_gravity)));
+    state_inout.rot_end = Eye3d; // Exp(mean_acc.cross(V3D(0, 0, -1 / scale_gravity)));
     state_inout.bias_g = mean_gyr;
 
     last_imu_ = meas.imu.back();
