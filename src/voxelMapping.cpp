@@ -79,7 +79,7 @@ double map_update_time_mean = 0;
 mutex mtx_buffer;
 condition_variable sig_buffer;
 Eigen::Vector3d last_odom(0, 0, 0);
-Eigen::Matrix3d last_rot = Eigen::Matrix3d::Zero();
+//~ Eigen::Matrix3d last_rot = Eigen::Matrix3d::Zero();     //~ 没有用到
 double trajectory_len = 0;
 
 string map_file_path, lid_topic, imu_topic;
@@ -95,8 +95,7 @@ double total_distance = 0;
 double gyr_cov_scale, acc_cov_scale;
 double last_timestamp_lidar, last_timestamp_imu = -1.0;
 double filter_size_corner_min, filter_size_surf_min, fov_deg;
-double map_incremental_time, kdtree_search_time, total_time, scan_match_time,
-    solve_time;
+double map_incremental_time, kdtree_search_time, total_time, scan_match_time, solve_time;
 bool lidar_pushed, flg_reset, flg_exit = false;
 bool dense_map_en = true;
 
@@ -341,8 +340,7 @@ bool sync_packages(MeasureGroup &meas) {
   return true;
 }
 
-void publish_frame_world(const ros::Publisher &pubLaserCloudFullRes,
-                         const int point_skip) {
+void publish_frame_world(const ros::Publisher &pubLaserCloudFullRes,const int point_skip) {
   PointCloudXYZI::Ptr laserCloudFullRes(dense_map_en ? feats_undistort
                                                      : feats_down_body);
   int size = laserCloudFullRes->points.size();
@@ -535,8 +533,7 @@ int main(int argc, char **argv) {
   nh.param<int>("mapping/max_iteration", NUM_MAX_ITERATIONS, 4);
   nh.param<int>("mapping/max_points_size", max_points_size, 100);
   nh.param<int>("mapping/max_cov_points_size", max_cov_points_size, 100);
-  nh.param<vector<double>>("mapping/layer_point_size", layer_point_size,
-                           vector<double>());
+  nh.param<vector<double>>("mapping/layer_point_size", layer_point_size, vector<double>());
   nh.param<int>("mapping/max_layer", max_layer, 2);
   nh.param<double>("mapping/voxel_size", max_voxel_size, 1.0);
   nh.param<double>("mapping/down_sample_size", filter_size_surf_min, 0.5);
@@ -552,8 +549,7 @@ int main(int argc, char **argv) {
 
   // visualization params
   nh.param<bool>("visualization/pub_voxel_map", publish_voxel_map, false);
-  nh.param<int>("visualization/publish_max_voxel_layer",
-                publish_max_voxel_layer, 0);
+  nh.param<int>("visualization/publish_max_voxel_layer", publish_max_voxel_layer, 0);
   nh.param<bool>("visualization/pub_point_cloud", publish_point_cloud, true);
   nh.param<int>("visualization/pub_point_cloud_skip", pub_point_cloud_skip, 1);
   nh.param<bool>("visualization/dense_map_enable", dense_map_en, false);
@@ -578,40 +574,33 @@ int main(int argc, char **argv) {
     sub_imu = nh.subscribe(imu_topic, 200000, imu_cbk);
   }
 
-  ros::Publisher pubLaserCloudFullRes =
-      nh.advertise<sensor_msgs::PointCloud2>("/cloud_registered", 100);
-  ros::Publisher pubLaserCloudEffect =
-      nh.advertise<sensor_msgs::PointCloud2>("/cloud_effected", 100);
-  ros::Publisher pubOdomAftMapped =
-      nh.advertise<nav_msgs::Odometry>("/aft_mapped_to_init", 10);
+  ros::Publisher pubLaserCloudFullRes = nh.advertise<sensor_msgs::PointCloud2>("/cloud_registered", 100);
+  ros::Publisher pubLaserCloudEffect = nh.advertise<sensor_msgs::PointCloud2>("/cloud_effected", 100);
+  ros::Publisher pubOdomAftMapped = nh.advertise<nav_msgs::Odometry>("/aft_mapped_to_init", 10);
   ros::Publisher pubPath = nh.advertise<nav_msgs::Path>("/path", 10);
-  ros::Publisher voxel_map_pub =
-      nh.advertise<visualization_msgs::MarkerArray>("/planes", 10000);
+  ros::Publisher voxel_map_pub = nh.advertise<visualization_msgs::MarkerArray>("/planes", 10000);
 
   path.header.stamp = ros::Time::now();
   path.header.frame_id = "camera_init";
 
   /*** variables definition ***/
-  VD(DIM_STATE) solution;
-  MD(DIM_STATE, DIM_STATE) G, H_T_H, I_STATE;
+  VD(DIM_STATE) solution;                                 //~ 18维状态量，和fastlio一致
+  MD(DIM_STATE, DIM_STATE) G, H_T_H, I_STATE;             //~ G: KH，K是Kalman Gain，H是观测。H_T_H是H^T*H，中间变量；I_STATE为单位矩阵
   V3D rot_add, t_add;
   StatesGroup state_propagat;
   PointType pointOri, pointSel, coeff;
   PointCloudXYZI::Ptr corr_normvect(new PointCloudXYZI(100000, 1));
   int frame_num = 0;
   double deltaT, deltaR, aver_time_consu = 0;
-  bool flg_EKF_inited, flg_EKF_converged, EKF_stop_flg = 0,
-                                          is_first_frame = true;
-  downSizeFilterSurf.setLeafSize(filter_size_surf_min, filter_size_surf_min,
-                                 filter_size_surf_min);
+  bool flg_EKF_inited, flg_EKF_converged, EKF_stop_flg = 0, is_first_frame = true;
+  downSizeFilterSurf.setLeafSize(filter_size_surf_min, filter_size_surf_min, filter_size_surf_min);
 
   shared_ptr<ImuProcess> p_imu(new ImuProcess());
   p_imu->imu_en = imu_en;
   Eigen::Vector3d extT;
   Eigen::Matrix3d extR;
   extT << extrinT[0], extrinT[1], extrinT[2];
-  extR << extrinR[0], extrinR[1], extrinR[2], extrinR[3], extrinR[4],
-      extrinR[5], extrinR[6], extrinR[7], extrinR[8];
+  extR << extrinR[0], extrinR[1], extrinR[2], extrinR[3], extrinR[4], extrinR[5], extrinR[6], extrinR[7], extrinR[8];
   p_imu->set_extrinsic(extT, extR);
 
   // Current version do not support imu.
@@ -643,8 +632,8 @@ int main(int argc, char **argv) {
 
   // for Plane Map
   bool init_map = false;
-  std::unordered_map<VOXEL_LOC, OctoTree *> voxel_map;
-  last_rot << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+  std::unordered_map<VOXEL_LOC, OctoTree *> voxel_map;      //~ 创建一个Hash映射，VOXEL_LOC是xyz的类，OctoTree是对应的一个八叉。TODO：查看对应的初始化
+  //~ last_rot << 1, 0, 0, 0, 1, 0, 0, 0, 1;                //~ 没有用到
 
   while (status) {
     if (flg_exit)
@@ -659,8 +648,7 @@ int main(int argc, char **argv) {
         continue;
       }
       std::cout << "scanIdx:" << scanIdx << std::endl;
-      double t0, t1, t2, t3, t4, t5, match_start, match_time, solve_start,
-          svd_time;
+      double t0, t1, t2, t3, t4, t5, match_start, match_time, solve_start, svd_time;
       match_time = 0;
       solve_time = 0;
       svd_time = 0;
@@ -670,11 +658,7 @@ int main(int argc, char **argv) {
       auto undistort_start = std::chrono::high_resolution_clock::now();
       p_imu->Process(Measures, state, feats_undistort);
       auto undistort_end = std::chrono::high_resolution_clock::now();
-      auto undistort_time =
-          std::chrono::duration_cast<std::chrono::duration<double>>(
-              undistort_end - undistort_start)
-              .count() *
-          1000;
+      auto undistort_time = std::chrono::duration_cast<std::chrono::duration<double>>(undistort_end - undistort_start).count() * 1000;
       if (calib_laser) {
         // calib the vertical angle for kitti dataset
         for (size_t i = 0; i < feats_undistort->size(); i++) {
@@ -703,22 +687,18 @@ int main(int argc, char **argv) {
         continue;
       }
 
-      flg_EKF_inited = (Measures.lidar_beg_time - first_lidar_time) < INIT_TIME
-                           ? false
-                           : true;
+      flg_EKF_inited = (Measures.lidar_beg_time - first_lidar_time) < INIT_TIME ? false : true;     //~ 如果小于初始时间，则不初始化。
+
+      //~ 初始化地图
       if (flg_EKF_inited && !init_map) {
-        pcl::PointCloud<pcl::PointXYZI>::Ptr world_lidar(
-            new pcl::PointCloud<pcl::PointXYZI>);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr world_lidar(new pcl::PointCloud<pcl::PointXYZI>);
         Eigen::Quaterniond q(state.rot_end);
         transformLidar(state, p_imu, feats_undistort, world_lidar);
         std::vector<pointWithCov> pv_list;
         for (size_t i = 0; i < world_lidar->size(); i++) {
           pointWithCov pv;
-          pv.point << world_lidar->points[i].x, world_lidar->points[i].y,
-              world_lidar->points[i].z;
-          V3D point_this(feats_undistort->points[i].x,
-                         feats_undistort->points[i].y,
-                         feats_undistort->points[i].z);
+          pv.point << world_lidar->points[i].x, world_lidar->points[i].y, world_lidar->points[i].z;
+          V3D point_this(feats_undistort->points[i].x, feats_undistort->points[i].y, feats_undistort->points[i].z);
           // if z=0, error will occur in calcBodyCov. To be solved
           if (point_this[2] == 0) {
             point_this[2] = 0.001;
@@ -729,10 +709,7 @@ int main(int argc, char **argv) {
           point_this += Lidar_offset_to_IMU;
           M3D point_crossmat;
           point_crossmat << SKEW_SYM_MATRX(point_this);
-          cov = state.rot_end * cov * state.rot_end.transpose() +
-                (-point_crossmat) * state.cov.block<3, 3>(0, 0) *
-                    (-point_crossmat).transpose() +
-                state.cov.block<3, 3>(3, 3);
+          cov = state.rot_end * cov * state.rot_end.transpose() + (-point_crossmat) * state.cov.block<3, 3>(0, 0) * (-point_crossmat).transpose() + state.cov.block<3, 3>(3, 3);
           pv.cov = cov;
           pv_list.push_back(pv);
           Eigen::Vector3d sigma_pv = pv.cov.diagonal();
@@ -741,9 +718,9 @@ int main(int argc, char **argv) {
           sigma_pv[2] = sqrt(sigma_pv[2]);
         }
 
-        buildVoxelMap(pv_list, max_voxel_size, max_layer, layer_size,
-                      max_points_size, max_points_size, min_eigen_value,
-                      voxel_map);
+        //~ TODO: 创建VoxelMap
+        buildVoxelMap(pv_list, max_voxel_size, max_layer, layer_size, max_points_size, max_points_size, min_eigen_value, voxel_map);
+        
         std::cout << "build voxel map" << std::endl;
         if (write_kitti_log) {
           kitti_log(fp_kitti);
@@ -757,21 +734,16 @@ int main(int argc, char **argv) {
         continue;
       }
 
+      //~ 在flg_EKF_inited=false时，只是初始化时并没有用到这些lidar点，但还是计算了。
       /*** downsample the feature points in a scan ***/
       auto t_downsample_start = std::chrono::high_resolution_clock::now();
       downSizeFilterSurf.setInputCloud(feats_undistort);
       downSizeFilterSurf.filter(*feats_down_body);
       auto t_downsample_end = std::chrono::high_resolution_clock::now();
-      std::cout << " feats size:" << feats_undistort->size()
-                << ", down size:" << feats_down_body->size() << std::endl;
-      auto t_downsample =
-          std::chrono::duration_cast<std::chrono::duration<double>>(
-              t_downsample_end - t_downsample_start)
-              .count() *
-          1000;
+      std::cout << " feats size:" << feats_undistort->size() << ", down size:" << feats_down_body->size() << std::endl;
+      auto t_downsample = std::chrono::duration_cast<std::chrono::duration<double>>(t_downsample_end - t_downsample_start).count() * 1000;
 
-      sort(feats_down_body->points.begin(), feats_down_body->points.end(),
-           time_list);
+      sort(feats_down_body->points.begin(), feats_down_body->points.end(), time_list);
 
       int rematch_num = 0;
       bool nearest_search_en = true;
@@ -779,8 +751,8 @@ int main(int argc, char **argv) {
 
       scan_match_time = 0.0;
 
-      std::vector<M3D> body_var;
-      std::vector<M3D> crossmat_list;
+      std::vector<M3D> body_var;          //~ 每个点的cov
+      std::vector<M3D> crossmat_list;     //~ 每个点的skew
 
       /*** iterated state estimation ***/
       auto calc_point_cov_start = std::chrono::high_resolution_clock::now();
@@ -792,7 +764,7 @@ int main(int argc, char **argv) {
           point_this[2] = 0.001;
         }
         M3D cov;
-        calcBodyCov(point_this, ranging_cov, angle_cov, cov);
+        calcBodyCov(point_this, ranging_cov, angle_cov, cov);     //~ 计算每个点的测量协方差
         M3D point_crossmat;
         point_crossmat << SKEW_SYM_MATRX(point_this);
         crossmat_list.push_back(point_crossmat);
@@ -801,11 +773,7 @@ int main(int argc, char **argv) {
         body_var.push_back(cov);
       }
       auto calc_point_cov_end = std::chrono::high_resolution_clock::now();
-      double calc_point_cov_time =
-          std::chrono::duration_cast<std::chrono::duration<double>>(
-              calc_point_cov_end - calc_point_cov_start)
-              .count() *
-          1000;
+      double calc_point_cov_time = std::chrono::duration_cast<std::chrono::duration<double>>(calc_point_cov_end - calc_point_cov_start).count() * 1000;
 
       for (iterCount = 0; iterCount < NUM_MAX_ITERATIONS; iterCount++) {
         laserCloudOri->clear();
@@ -817,10 +785,9 @@ int main(int argc, char **argv) {
         std::vector<ptpl> ptpl_list;
         /** LiDAR match based on 3 sigma criterion **/
 
-        vector<pointWithCov> pv_list;
-        std::vector<M3D> var_list;
-        pcl::PointCloud<pcl::PointXYZI>::Ptr world_lidar(
-            new pcl::PointCloud<pcl::PointXYZI>);
+        vector<pointWithCov> pv_list;       //~ 转到世界系下的cov
+        std::vector<M3D> var_list;          //~ 单独存储了cov。但pv_list中也已具备了相同的cov信息。
+        pcl::PointCloud<pcl::PointXYZI>::Ptr world_lidar(new pcl::PointCloud<pcl::PointXYZI>);
         transformLidar(state, p_imu, feats_down_body, world_lidar);
         for (size_t i = 0; i < feats_down_body->size(); i++) {
           pointWithCov pv;
@@ -841,8 +808,9 @@ int main(int argc, char **argv) {
         }
         auto scan_match_time_start = std::chrono::high_resolution_clock::now();
         std::vector<V3D> non_match_list;
-        BuildResidualListOMP(voxel_map, max_voxel_size, 3.0, max_layer, pv_list,
-                             ptpl_list, non_match_list);
+
+        //~ 创建ResidualList
+        BuildResidualListOMP(voxel_map, max_voxel_size, 3.0, max_layer, pv_list, ptpl_list, non_match_list);
 
         auto scan_match_time_end = std::chrono::high_resolution_clock::now();
 
@@ -867,11 +835,7 @@ int main(int argc, char **argv) {
           total_residual += fabs(dis);
         }
         res_mean_last = total_residual / effct_feat_num;
-        scan_match_time +=
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-                scan_match_time_end - scan_match_time_start)
-                .count() *
-            1000;
+        scan_match_time += std::chrono::duration_cast<std::chrono::duration<double>>(scan_match_time_end - scan_match_time_start).count() * 1000;
 
         // cout << "[ Matching ]: Time:"
         //      << std::chrono::duration_cast<std::chrono::duration<double>>(
@@ -950,10 +914,7 @@ int main(int argc, char **argv) {
           z_init.block<3, 1>(0, 0) = -state.pos_end;
 
           auto H_init_T = H_init.transpose();
-          auto &&K_init =
-              state.cov * H_init_T *
-              (H_init * state.cov * H_init_T + 0.0001 * MD(9, 9)::Identity())
-                  .inverse();
+          auto &&K_init = state.cov * H_init_T * (H_init * state.cov * H_init_T + 0.0001 * MD(9, 9)::Identity()).inverse();
           solution = K_init * z_init;
 
           state.resetpose();
@@ -961,8 +922,7 @@ int main(int argc, char **argv) {
         } else {
           auto &&Hsub_T = Hsub.transpose();
           H_T_H.block<6, 6>(0, 0) = Hsub_T_R_inv * Hsub;
-          MD(DIM_STATE, DIM_STATE) &&K_1 =
-              (H_T_H + (state.cov).inverse()).inverse();
+          MD(DIM_STATE, DIM_STATE) &&K_1 = (H_T_H + (state.cov).inverse()).inverse();
           K = K_1.block<DIM_STATE, 6>(0, 0) * Hsub_T_R_inv;
           auto vec = state_propagat - state;
           solution = K * meas_vec + vec - K * Hsub * vec.block<6, 1>(0, 0);
@@ -971,8 +931,7 @@ int main(int argc, char **argv) {
           if (0) // if(V.minCoeff(&minRow, &minCol) < 1.0f)
           {
             VD(6) V = H_T_H.block<6, 6>(0, 0).eigenvalues().real();
-            cout << "!!!!!! Degeneration Happend, eigen values: "
-                 << V.transpose() << endl;
+            cout << "!!!!!! Degeneration Happend, eigen values: " << V.transpose() << endl;
             EKF_stop_flg = true;
             solution.block<6, 1>(9, 0).setZero();
           }
@@ -992,15 +951,13 @@ int main(int argc, char **argv) {
         euler_cur = RotMtoEuler(state.rot_end);
         /*** Rematch Judgement ***/
         nearest_search_en = false;
-        if (flg_EKF_converged ||
-            ((rematch_num == 0) && (iterCount == (NUM_MAX_ITERATIONS - 2)))) {
+        if (flg_EKF_converged || ((rematch_num == 0) && (iterCount == (NUM_MAX_ITERATIONS - 2)))) {
           nearest_search_en = true;
           rematch_num++;
         }
 
         /*** Convergence Judgements and Covariance Update ***/
-        if (!EKF_stop_flg &&
-            (rematch_num >= 2 || (iterCount == NUM_MAX_ITERATIONS - 1))) {
+        if (!EKF_stop_flg && (rematch_num >= 2 || (iterCount == NUM_MAX_ITERATIONS - 1))) {
           if (flg_EKF_inited) {
             /*** Covariance Update ***/
             G.setZero();
@@ -1018,54 +975,45 @@ int main(int argc, char **argv) {
           EKF_stop_flg = true;
         }
         auto t_solve_end = std::chrono::high_resolution_clock::now();
-        solve_time += std::chrono::duration_cast<std::chrono::duration<double>>(
-                          t_solve_end - t_solve_start)
-                          .count() *
-                      1000;
+        solve_time += std::chrono::duration_cast<std::chrono::duration<double>>(t_solve_end - t_solve_start).count() * 1000;
 
         if (EKF_stop_flg)
           break;
       }
 
+      // TODO: 关于VoxelMap部分
       /*** add the  points to the voxel map ***/
       auto map_incremental_start = std::chrono::high_resolution_clock::now();
-      pcl::PointCloud<pcl::PointXYZI>::Ptr world_lidar(
-          new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::PointCloud<pcl::PointXYZI>::Ptr world_lidar(new pcl::PointCloud<pcl::PointXYZI>);
       transformLidar(state, p_imu, feats_down_body, world_lidar);
       std::vector<pointWithCov> pv_list;
       for (size_t i = 0; i < world_lidar->size(); i++) {
         pointWithCov pv;
-        pv.point << world_lidar->points[i].x, world_lidar->points[i].y,
-            world_lidar->points[i].z;
+        pv.point << world_lidar->points[i].x, world_lidar->points[i].y,world_lidar->points[i].z;
         M3D point_crossmat = crossmat_list[i];
-        M3D cov = body_var[i];
-        cov = state.rot_end * cov * state.rot_end.transpose() +
-              (-point_crossmat) * state.cov.block<3, 3>(0, 0) *
-                  (-point_crossmat).transpose() +
-              state.cov.block<3, 3>(3, 3);
+        M3D cov = body_var[i];    //~ 在LiDAR系下点测量的不确定性
+        //~ 转化到World系下，并考虑姿态(R,T)的不确定性。论文公式(3)
+        cov = state.rot_end * cov * state.rot_end.transpose()
+              + (-point_crossmat) * state.cov.block<3, 3>(0, 0) *(-point_crossmat).transpose()
+              + state.cov.block<3, 3>(3, 3);
         pv.cov = cov;
         pv_list.push_back(pv);
       }
       std::sort(pv_list.begin(), pv_list.end(), var_contrast);
-      updateVoxelMap(pv_list, max_voxel_size, max_layer, layer_size,
-                     max_points_size, max_points_size, min_eigen_value,
-                     voxel_map);
-      auto map_incremental_end = std::chrono::high_resolution_clock::now();
-      map_incremental_time =
-          std::chrono::duration_cast<std::chrono::duration<double>>(
-              map_incremental_end - map_incremental_start)
-              .count() *
-          1000;
 
-      total_time = t_downsample + scan_match_time + solve_time +
-                   map_incremental_time + undistort_time + calc_point_cov_time;
+      //~ TODO: 更新VoxelMap
+      updateVoxelMap(pv_list, max_voxel_size, max_layer, layer_size, max_points_size, max_points_size, min_eigen_value, voxel_map);
+      
+      auto map_incremental_end = std::chrono::high_resolution_clock::now();
+      map_incremental_time = std::chrono::duration_cast<std::chrono::duration<double>>(map_incremental_end - map_incremental_start).count() * 1000;
+
+      total_time = t_downsample + scan_match_time + solve_time + map_incremental_time + undistort_time + calc_point_cov_time;
       /******* Publish functions:  *******/
       publish_odometry(pubOdomAftMapped);
       publish_path(pubPath);
       tf::Transform transform;
       tf::Quaternion q;
-      transform.setOrigin(
-          tf::Vector3(state.pos_end(0), state.pos_end(1), state.pos_end(2)));
+      transform.setOrigin(tf::Vector3(state.pos_end(0), state.pos_end(1), state.pos_end(2)));
       q.setW(geoQuat.w);
       q.setX(geoQuat.x);
       q.setY(geoQuat.y);
@@ -1088,47 +1036,26 @@ int main(int argc, char **argv) {
       publish_effect(pubLaserCloudEffect);
 
       frame_num++;
-      mean_raw_points = mean_raw_points * (frame_num - 1) / frame_num +
-                        (double)(feats_undistort->size()) / frame_num;
-      mean_ds_points = mean_ds_points * (frame_num - 1) / frame_num +
-                       (double)(feats_down_body->size()) / frame_num;
-      mean_effect_points = mean_effect_points * (frame_num - 1) / frame_num +
-                           (double)effct_feat_num / frame_num;
+      mean_raw_points = mean_raw_points * (frame_num - 1) / frame_num + (double)(feats_undistort->size()) / frame_num;
+      mean_ds_points = mean_ds_points * (frame_num - 1) / frame_num + (double)(feats_down_body->size()) / frame_num;
+      mean_effect_points = mean_effect_points * (frame_num - 1) / frame_num + (double)effct_feat_num / frame_num;
 
-      undistort_time_mean = undistort_time_mean * (frame_num - 1) / frame_num +
-                            (undistort_time) / frame_num;
-      down_sample_time_mean =
-          down_sample_time_mean * (frame_num - 1) / frame_num +
-          (t_downsample) / frame_num;
-      calc_cov_time_mean = calc_cov_time_mean * (frame_num - 1) / frame_num +
-                           (calc_point_cov_time) / frame_num;
-      scan_match_time_mean =
-          scan_match_time_mean * (frame_num - 1) / frame_num +
-          (scan_match_time) / frame_num;
-      ekf_solve_time_mean = ekf_solve_time_mean * (frame_num - 1) / frame_num +
-                            (solve_time) / frame_num;
-      map_update_time_mean =
-          map_update_time_mean * (frame_num - 1) / frame_num +
-          (map_incremental_time) / frame_num;
-
-      aver_time_consu = aver_time_consu * (frame_num - 1) / frame_num +
-                        (total_time) / frame_num;
+      undistort_time_mean = undistort_time_mean * (frame_num - 1) / frame_num + (undistort_time) / frame_num;
+      down_sample_time_mean = down_sample_time_mean * (frame_num - 1) / frame_num + (t_downsample) / frame_num;
+      calc_cov_time_mean = calc_cov_time_mean * (frame_num - 1) / frame_num + (calc_point_cov_time) / frame_num;
+      scan_match_time_mean = scan_match_time_mean * (frame_num - 1) / frame_num + (scan_match_time) / frame_num;
+      ekf_solve_time_mean = ekf_solve_time_mean * (frame_num - 1) / frame_num + (solve_time) / frame_num;
+      map_update_time_mean = map_update_time_mean * (frame_num - 1) / frame_num + (map_incremental_time) / frame_num;
+      aver_time_consu = aver_time_consu * (frame_num - 1) / frame_num + (total_time) / frame_num;
 
       time_log_counter++;
-      cout << "[ Time ]: "
-           << "average undistort: " << undistort_time_mean << std::endl;
-      cout << "[ Time ]: "
-           << "average down sample: " << down_sample_time_mean << std::endl;
-      cout << "[ Time ]: "
-           << "average calc cov: " << calc_cov_time_mean << std::endl;
-      cout << "[ Time ]: "
-           << "average scan match: " << scan_match_time_mean << std::endl;
-      cout << "[ Time ]: "
-           << "average solve: " << ekf_solve_time_mean << std::endl;
-      cout << "[ Time ]: "
-           << "average map incremental: " << map_update_time_mean << std::endl;
-      cout << "[ Time ]: "
-           << " average total " << aver_time_consu << endl;
+      cout << "[ Time ]: " << "average undistort: " << undistort_time_mean << std::endl;
+      cout << "[ Time ]: " << "average down sample: " << down_sample_time_mean << std::endl;
+      cout << "[ Time ]: " << "average calc cov: " << calc_cov_time_mean << std::endl;
+      cout << "[ Time ]: " << "average scan match: " << scan_match_time_mean << std::endl;
+      cout << "[ Time ]: " << "average solve: " << ekf_solve_time_mean << std::endl;
+      cout << "[ Time ]: " << "average map incremental: " << map_update_time_mean << std::endl;
+      cout << "[ Time ]: " << " average total " << aver_time_consu << endl;
 
       if (write_kitti_log) {
         kitti_log(fp_kitti);

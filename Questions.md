@@ -1,0 +1,1 @@
+max_cov_points_size 和 max_points_size 有什么作用？

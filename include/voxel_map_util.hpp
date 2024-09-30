@@ -40,7 +40,7 @@ typedef struct pointWithCov {
 typedef struct Plane {
   Eigen::Vector3d center;
   Eigen::Vector3d normal;
-  Eigen::Vector3d y_normal;
+  Eigen::Vector3d y_normal;       //~ xy有了，z自然就求出来了？
   Eigen::Vector3d x_normal;
   Eigen::Matrix3d covariance;
   Eigen::Matrix<double, 6, 6> plane_cov;
@@ -57,10 +57,10 @@ typedef struct Plane {
   // is_update and last_update_points_size are only for publish plane
   bool is_update = false;
   int last_update_points_size = 0;
-  bool update_enable = true;
+  bool update_enable = true;          //~ 这个变量没有用到。和Voxel的update_enable_动作一致
 } Plane;
 
-class VOXEL_LOC {
+class VOXEL_LOC {     //~ Voxel Location
 public:
   int64_t x, y, z;
 
@@ -106,8 +106,7 @@ public:
   bool init_octo_;
   bool update_cov_enable_;
   bool update_enable_;
-  OctoTree(int max_layer, int layer, std::vector<int> layer_point_size,
-           int max_point_size, int max_cov_points_size, float planer_threshold)
+  OctoTree(int max_layer, int layer, std::vector<int> layer_point_size, int max_point_size, int max_cov_points_size, float planer_threshold)
       : max_layer_(max_layer), layer_(layer),
         layer_point_size_(layer_point_size), max_points_size_(max_point_size),
         max_cov_points_size_(max_cov_points_size),
@@ -129,6 +128,7 @@ public:
   }
 
   // check is plane , calc plane parameters including plane covariance
+  //~ 这个函数直接“计算”新的平面参数（平面中心、法向量、协方差），并同时判断是否是一个平面。
   void init_plane(const std::vector<pointWithCov> &points, Plane *plane) {
     plane->plane_cov = Eigen::Matrix<double, 6, 6>::Zero();
     plane->covariance = Eigen::Matrix3d::Zero();
@@ -141,24 +141,22 @@ public:
       plane->center += pv.point;
     }
     plane->center = plane->center / plane->points_size;
-    plane->covariance = plane->covariance / plane->points_size -
-                        plane->center * plane->center.transpose();
+    plane->covariance = plane->covariance / plane->points_size - plane->center * plane->center.transpose();   //~ 计算加入的这些points的协方差
     Eigen::EigenSolver<Eigen::Matrix3d> es(plane->covariance);
     Eigen::Matrix3cd evecs = es.eigenvectors();
     Eigen::Vector3cd evals = es.eigenvalues();
     Eigen::Vector3d evalsReal;
     evalsReal = evals.real();
-    Eigen::Matrix3f::Index evalsMin, evalsMax;
+    Eigen::Matrix3f::Index evalsMin, evalsMax;              //~ 获得最大、最小、和中间特征值的位置（对应eigen-value的行）
     evalsReal.rowwise().sum().minCoeff(&evalsMin);
     evalsReal.rowwise().sum().maxCoeff(&evalsMax);
-    int evalsMid = 3 - evalsMin - evalsMax;
-    Eigen::Vector3d evecMin = evecs.real().col(evalsMin);
+    int evalsMid = 3 - evalsMin - evalsMax;                 //~ 计算中大小特征值的位置
+    Eigen::Vector3d evecMin = evecs.real().col(evalsMin);   //~ 获得对应的特征向量
     Eigen::Vector3d evecMid = evecs.real().col(evalsMid);
     Eigen::Vector3d evecMax = evecs.real().col(evalsMax);
     // plane covariance calculation
     Eigen::Matrix3d J_Q;
-    J_Q << 1.0 / plane->points_size, 0, 0, 0, 1.0 / plane->points_size, 0, 0, 0,
-        1.0 / plane->points_size;
+    J_Q << 1.0 / plane->points_size, 0, 0, 0, 1.0 / plane->points_size, 0, 0, 0, 1.0 / plane->points_size;
     if (evalsReal(evalsMin) < planer_threshold_) {
       std::vector<int> index(points.size());
       std::vector<Eigen::Matrix<double, 6, 6>> temp_matrix(points.size());
@@ -184,12 +182,9 @@ public:
         plane->plane_cov += J * points[i].cov * J.transpose();
       }
 
-      plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin),
-          evecs.real()(2, evalsMin);
-      plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid),
-          evecs.real()(2, evalsMid);
-      plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax),
-          evecs.real()(2, evalsMax);
+      plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin), evecs.real()(2, evalsMin);
+      plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid), evecs.real()(2, evalsMid);
+      plane->x_normal << evecs.real()(0, evalsMax), evecs.real()(1, evalsMax), evecs.real()(2, evalsMax);
       plane->min_eigen_value = evalsReal(evalsMin);
       plane->mid_eigen_value = evalsReal(evalsMid);
       plane->max_eigen_value = evalsReal(evalsMax);
@@ -243,6 +238,7 @@ public:
   }
 
   // only updaye plane normal, center and radius with new points
+  //~ 这个函数不“计算”，而是“更新”平面参数（平面中心、法向量）。但是，代码中并没有判断，是否为同一个平面？ISSUE:
   void update_plane(const std::vector<pointWithCov> &points, Plane *plane) {
     Eigen::Matrix3d old_covariance = plane->covariance;
     Eigen::Vector3d old_center = plane->center;
@@ -257,8 +253,7 @@ public:
     }
     plane->points_size = plane->points_size + points.size();
     plane->center = sum_p / plane->points_size;
-    plane->covariance = sum_ppt / plane->points_size -
-                        plane->center * plane->center.transpose();
+    plane->covariance = sum_ppt / plane->points_size - plane->center * plane->center.transpose();
     Eigen::EigenSolver<Eigen::Matrix3d> es(plane->covariance);
     Eigen::Matrix3cd evecs = es.eigenvectors();
     Eigen::Vector3cd evals = es.eigenvalues();
@@ -289,6 +284,7 @@ public:
       plane->is_plane = true;
       plane->is_update = true;
     } else {
+      //~ 这段代码和上面if的几乎一样？只有is_plane这一行是false
       plane->normal << evecs.real()(0, evalsMin), evecs.real()(1, evalsMin),
           evecs.real()(2, evalsMin);
       plane->y_normal << evecs.real()(0, evalsMid), evecs.real()(1, evalsMid),
@@ -308,32 +304,32 @@ public:
   }
 
   void init_octo_tree() {
-    if (temp_points_.size() > max_plane_update_threshold_) {
+    if (temp_points_.size() > max_plane_update_threshold_) {    //~ 每一个Voxel都是一个Octo-tree。检查点数够，再执行
       init_plane(temp_points_, plane_ptr_);
       if (plane_ptr_->is_plane == true) {
-        octo_state_ = 0;
+        octo_state_ = 0;            //~ 如果符合平面，就标记为tree的叶子节点，不再进行拆分平面。
         if (temp_points_.size() > max_cov_points_size_) {
           update_cov_enable_ = false;
         }
         if (temp_points_.size() > max_points_size_) {
           update_enable_ = false;
         }
-      } else {
+      } else {                      //~ 否则，标记为1，再拆分。
         octo_state_ = 1;
-        cut_octo_tree();
+        cut_octo_tree();            //~ 继续拆分，直到符合平面。
       }
-      init_octo_ = true;
+      init_octo_ = true;            //~ 只有被初始化以后的tree，在能够在后续update时使用
       new_points_num_ = 0;
       //      temp_points_.clear();
     }
   }
 
   void cut_octo_tree() {
-    if (layer_ >= max_layer_) {
+    if (layer_ >= max_layer_) {     //~ 树太深了，不拆了
       octo_state_ = 0;
       return;
     }
-    for (size_t i = 0; i < temp_points_.size(); i++) {
+    for (size_t i = 0; i < temp_points_.size(); i++) {  //~ 首先判断这个点位于要拆分后的八叉树中的哪一块，然后各自创建
       int xyz[3] = {0, 0, 0};
       if (temp_points_[i].point[0] > voxel_center_[0]) {
         xyz[0] = 1;
@@ -346,28 +342,23 @@ public:
       }
       int leafnum = 4 * xyz[0] + 2 * xyz[1] + xyz[2];
       if (leaves_[leafnum] == nullptr) {
-        leaves_[leafnum] = new OctoTree(
-            max_layer_, layer_ + 1, layer_point_size_, max_points_size_,
-            max_cov_points_size_, planer_threshold_);
-        leaves_[leafnum]->voxel_center_[0] =
-            voxel_center_[0] + (2 * xyz[0] - 1) * quater_length_;
-        leaves_[leafnum]->voxel_center_[1] =
-            voxel_center_[1] + (2 * xyz[1] - 1) * quater_length_;
-        leaves_[leafnum]->voxel_center_[2] =
-            voxel_center_[2] + (2 * xyz[2] - 1) * quater_length_;
+        leaves_[leafnum] = new OctoTree(max_layer_, layer_ + 1, layer_point_size_, max_points_size_, max_cov_points_size_, planer_threshold_);
+        leaves_[leafnum]->voxel_center_[0] = voxel_center_[0] + (2 * xyz[0] - 1) * quater_length_;
+        leaves_[leafnum]->voxel_center_[1] = voxel_center_[1] + (2 * xyz[1] - 1) * quater_length_;
+        leaves_[leafnum]->voxel_center_[2] = voxel_center_[2] + (2 * xyz[2] - 1) * quater_length_;
         leaves_[leafnum]->quater_length_ = quater_length_ / 2;
       }
       leaves_[leafnum]->temp_points_.push_back(temp_points_[i]);
       leaves_[leafnum]->new_points_num_++;
     }
-    for (uint i = 0; i < 8; i++) {
+    for (uint i = 0; i < 8; i++) {                      //~ 再递归检查每个八叉树，判断是否创建平面或拆分。
       if (leaves_[i] != nullptr) {
-        if (leaves_[i]->temp_points_.size() >
-            leaves_[i]->max_plane_update_threshold_) {
+        if (leaves_[i]->temp_points_.size() > leaves_[i]->max_plane_update_threshold_) {
           init_plane(leaves_[i]->temp_points_, leaves_[i]->plane_ptr_);
           if (leaves_[i]->plane_ptr_->is_plane) {
             leaves_[i]->octo_state_ = 0;
-          } else {
+          } 
+          else {
             leaves_[i]->octo_state_ = 1;
             leaves_[i]->cut_octo_tree();
           }
@@ -378,43 +369,82 @@ public:
     }
   }
 
+/*
+初始状态判断：
+1、!init_octo_：如果八叉树还没有初始化，那么每当有新的点进来时，先将其暂存到 temp_points_ 中。如果暂存点数超过阈值 max_plane_update_threshold_，则初始化八叉树。
+2、八叉树已经初始化：
+  八叉树初始化后，首先根据 plane_ptr_->is_plane 判断当前节点是否为平面节点：
+    平面节点的处理：
+      如果 update_enable_ 为真，说明平面可以被更新。
+      根据 update_cov_enable_ 判断是否更新协方差。
+      新点数超过 update_size_threshold_ 时，初始化或更新平面。
+      当所有点的数量超过 max_cov_points_size_ 或 max_points_size_ 时，禁用协方差更新或禁用更新功能。
+    非平面节点的处理：
+      如果当前层 layer_ 小于最大层数 max_layer_，则计算点所在的子叶节点，如果子节点存在则递归更新该子节点，如果不存在则创建一个新的子节点并更新。
+      如果当前层数等于 max_layer_，则和平面节点类似，执行点的更新和条件判断。
+*/
   void UpdateOctoTree(const pointWithCov &pv) {
-    if (!init_octo_) {
+    // 1. 还未初始化，暂存。
+    if (!init_octo_) {            //~ init_octo_：在`init_octo_tree`中有足够多的点以后，判定为true；或
       new_points_num_++;
       all_points_num_++;
       temp_points_.push_back(pv);
       if (temp_points_.size() > max_plane_update_threshold_) {
         init_octo_tree();
       }
-    } else {
+    }
+    // 2. 已经初始化，则继续判断
+    else {
+      // 2.1 是平面节点，则判断是否可以进行更新 (update_enable_)。
       if (plane_ptr_->is_plane) {
+        // 2.1.1 update_enable_ 决定了是否进行更新。默认可以，不能更新的2个情况：
+          // 1）当所有点的数量 all_points_num_ 达到或超过了 max_points_size_。
+          // 2）非平面节点拆分达到了最大层数。
         if (update_enable_) {
           new_points_num_++;
           all_points_num_++;
+          // 2.1.2.1 然后再判断是否更新协方差。和上方类似，超过了点数 max_cov_points_size_ 或到最大层数。目前 max_points_size_ 和 max_cov_points_size_ 设定一致，所以更新依据好像是一样的？ TODO: 
+          // 如果cov是可以更新的，会将新的点存在temp_points_中用于后续更新。否则，存在new_points中。
           if (update_cov_enable_) {
             temp_points_.push_back(pv);
-          } else {
-            new_points_.push_back(pv);
+          }  
+          else {
+            new_points_.push_back(pv);    
+            //~ 注意，这个值好像没有用。此时状态是，“是个平面，但不更新协方差”，所以new_points_后面没有用到，就清空了。
+            //~ 莫非是？是个平面，但在某次判定后，判定为不是平面以后，后面再次参与计算了？此时有可能没有被清空。
           }
-          if (new_points_num_ > update_size_threshold_) {
+
+          // 2.1.2.2 当temp_points_足够多以后，会init平面。在init_plane中。ISSUE: 和后面update_plane有什么区别？
+          if (new_points_num_ > update_size_threshold_) {     //~ 5
             if (update_cov_enable_) {
               init_plane(temp_points_, plane_ptr_);
             }
+            //TODO: ISSUE: 为什么这里 Update_cov_enable_是false时，不再更新平面？ update_plane?
             new_points_num_ = 0;
           }
+
+          // 2.1.2.3 如果用于更新协方差的点数足够了，则清空所有temp_points_;
           if (all_points_num_ >= max_cov_points_size_) {
             update_cov_enable_ = false;
             std::vector<pointWithCov>().swap(temp_points_);
           }
+          // 2.1.2.4 如果总点数足够多了，则清空所有new_points_。目前参数设定上，这两个if会同时执行。 ISSUE: 搞清楚temp_points_和new_points_的关系。
           if (all_points_num_ >= max_points_size_) {
             update_enable_ = false;
-            plane_ptr_->update_enable = false;
+            plane_ptr_->update_enable = false;      //~ 这个变量没有用到。和Voxel的update_enable_动作一致
             std::vector<pointWithCov>().swap(new_points_);
           }
-        } else {
+        } 
+        // 2.1.2 不能够更新, update_enable_，则直接结束。 
+        // 什么时候“是平面”但“不能够更新”呢？点数足够多了，所以这时候这个OctoTree就啥也不需要做了。
+        else {
           return;
         }
-      } else {
+      }
+
+      // 2.2 非平面的节点。
+      else {
+        // 2.2.1 未达到最大深度，则继续往下创建新的节点。
         if (layer_ < max_layer_) {
           if (temp_points_.size() != 0) {
             std::vector<pointWithCov>().swap(temp_points_);
@@ -422,6 +452,7 @@ public:
           if (new_points_.size() != 0) {
             std::vector<pointWithCov>().swap(new_points_);
           }
+          //~ ? 这段在做什么，判断leaves_
           int xyz[3] = {0, 0, 0};
           if (pv.point[0] > voxel_center_[0]) {
             xyz[0] = 1;
@@ -435,21 +466,22 @@ public:
           int leafnum = 4 * xyz[0] + 2 * xyz[1] + xyz[2];
           if (leaves_[leafnum] != nullptr) {
             leaves_[leafnum]->UpdateOctoTree(pv);
-          } else {
+          } 
+          else {
             leaves_[leafnum] = new OctoTree(
                 max_layer_, layer_ + 1, layer_point_size_, max_points_size_,
                 max_cov_points_size_, planer_threshold_);
             leaves_[leafnum]->layer_point_size_ = layer_point_size_;
-            leaves_[leafnum]->voxel_center_[0] =
-                voxel_center_[0] + (2 * xyz[0] - 1) * quater_length_;
-            leaves_[leafnum]->voxel_center_[1] =
-                voxel_center_[1] + (2 * xyz[1] - 1) * quater_length_;
-            leaves_[leafnum]->voxel_center_[2] =
-                voxel_center_[2] + (2 * xyz[2] - 1) * quater_length_;
+            leaves_[leafnum]->voxel_center_[0] = voxel_center_[0] + (2 * xyz[0] - 1) * quater_length_;
+            leaves_[leafnum]->voxel_center_[1] = voxel_center_[1] + (2 * xyz[1] - 1) * quater_length_;
+            leaves_[leafnum]->voxel_center_[2] = voxel_center_[2] + (2 * xyz[2] - 1) * quater_length_;
             leaves_[leafnum]->quater_length_ = quater_length_ / 2;
             leaves_[leafnum]->UpdateOctoTree(pv);
           }
-        } else {
+        } 
+        // 2.2.2 已经达到了最大深度。这个节点不会再更新了。如果还处于可更新状态，则改成不可更新。
+        else {
+          // 2.2.2.1 状态上是否可以继续更新？若不是，则跳过；若是，则改成不可更新。
           if (update_enable_) {
             new_points_num_++;
             all_points_num_++;
@@ -473,7 +505,7 @@ public:
             }
             if (all_points_num_ >= max_points_size_) {
               update_enable_ = false;
-              plane_ptr_->update_enable = false;
+              plane_ptr_->update_enable = false;      //~ 这个变量没有用到。和Voxel的update_enable_动作一致
               std::vector<pointWithCov>().swap(new_points_);
             }
           }
@@ -541,16 +573,13 @@ void buildVoxelMap(const std::vector<pointWithCov> &input_points,
         loc_xyz[j] -= 1.0;
       }
     }
-    VOXEL_LOC position((int64_t)loc_xyz[0], (int64_t)loc_xyz[1],
-                       (int64_t)loc_xyz[2]);
-    auto iter = feat_map.find(position);
+    VOXEL_LOC position((int64_t)loc_xyz[0], (int64_t)loc_xyz[1], (int64_t)loc_xyz[2]);
+    auto iter = feat_map.find(position);      //~ feat_map 外部传入的就是VoxelMap，Hash映射的，VOXEL_LOC -> OctoTree
     if (iter != feat_map.end()) {
       feat_map[position]->temp_points_.push_back(p_v);
       feat_map[position]->new_points_num_++;
     } else {
-      OctoTree *octo_tree =
-          new OctoTree(max_layer, 0, layer_point_size, max_points_size,
-                       max_cov_points_size, planer_threshold);
+      OctoTree *octo_tree = new OctoTree(max_layer, 0, layer_point_size, max_points_size, max_cov_points_size, planer_threshold);
       feat_map[position] = octo_tree;
       feat_map[position]->quater_length_ = voxel_size / 4;
       feat_map[position]->voxel_center_[0] = (0.5 + position.x) * voxel_size;
@@ -562,7 +591,7 @@ void buildVoxelMap(const std::vector<pointWithCov> &input_points,
     }
   }
   for (auto iter = feat_map.begin(); iter != feat_map.end(); ++iter) {
-    iter->second->init_octo_tree();
+    iter->second->init_octo_tree();       //~ 对每一个voxel创建一个octo_tree
   }
 }
 
@@ -577,26 +606,23 @@ void updateVoxelMap(const std::vector<pointWithCov> &input_points,
     const pointWithCov p_v = input_points[i];
     float loc_xyz[3];
     for (int j = 0; j < 3; j++) {
-      loc_xyz[j] = p_v.point[j] / voxel_size;
+      loc_xyz[j] = p_v.point[j] / voxel_size;       //~ voxel_size是每个voxel的尺寸，常规默认3m。这里是先获得索引。
       if (loc_xyz[j] < 0) {
-        loc_xyz[j] -= 1.0;
+        loc_xyz[j] -= 1.0;    //~ 避免(int64_t)取整时错误
       }
     }
-    VOXEL_LOC position((int64_t)loc_xyz[0], (int64_t)loc_xyz[1],
-                       (int64_t)loc_xyz[2]);
-    auto iter = feat_map.find(position);
-    if (iter != feat_map.end()) {
+    VOXEL_LOC position((int64_t)loc_xyz[0], (int64_t)loc_xyz[1], (int64_t)loc_xyz[2]);    //~ 查找这个Location
+    auto iter = feat_map.find(position);        //~ feat_map 外部传入的就是VoxelMap，Hash映射的，VOXEL_LOC -> OctoTree
+    if (iter != feat_map.end()) {               //~ 如果不是末尾，即找到了对应的映射，则直接插入。插入的方式是更新OctoTree
       feat_map[position]->UpdateOctoTree(p_v);
-    } else {
-      OctoTree *octo_tree =
-          new OctoTree(max_layer, 0, layer_point_size, max_points_size,
-                       max_cov_points_size, planer_threshold);
-      feat_map[position] = octo_tree;
+    } else {                                    //~ 否则，在指定位置创建一个新的OctoTree
+      OctoTree *octo_tree = new OctoTree(max_layer, 0, layer_point_size, max_points_size, max_cov_points_size, planer_threshold);
+      feat_map[position] = octo_tree;           //~ 建立新的映射；并计算这个OctoTree相关的参数。
       feat_map[position]->quater_length_ = voxel_size / 4;
       feat_map[position]->voxel_center_[0] = (0.5 + position.x) * voxel_size;
       feat_map[position]->voxel_center_[1] = (0.5 + position.y) * voxel_size;
       feat_map[position]->voxel_center_[2] = (0.5 + position.z) * voxel_size;
-      feat_map[position]->UpdateOctoTree(p_v);
+      feat_map[position]->UpdateOctoTree(p_v);  //~ 计算完成后，将这个点再插入到OctoTree中
     }
   }
 }
