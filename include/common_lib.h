@@ -52,11 +52,11 @@ typedef Matrix3f M3F;
 #define MF(a, b) Matrix<float, (a), (b)>
 #define VF(a) Matrix<float, (a), 1>
 
-M3D Eye3d(M3D::Identity());
-M3F Eye3f(M3F::Identity());
-V3D Zero3d(0, 0, 0);
-V3F Zero3f(0, 0, 0);
-Vector3d Lidar_offset_to_IMU(0, 0, 0);
+extern M3D Eye3d;
+extern M3F Eye3f;
+extern V3D Zero3d;
+extern V3F Zero3f;
+extern Vector3d Lidar_offset_to_IMU;
 
 struct MeasureGroup // Lidar data and imu dates for the curent process
 {

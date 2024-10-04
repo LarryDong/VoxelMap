@@ -117,7 +117,7 @@ pcl::VoxelGrid<PointType> downSizeFilterSurf;
 pcl::VoxelGrid<PointType> downSizeFilterMap;
 
 V3D euler_cur;
-V3D position_last(Zero3d);
+V3D position_last(0,0,0);
 
 // estimator inputs and output;
 MeasureGroup Measures;
@@ -127,6 +127,16 @@ nav_msgs::Path path;
 nav_msgs::Odometry odomAftMapped;
 geometry_msgs::Quaternion geoQuat;
 geometry_msgs::PoseStamped msg_body_pose;
+
+
+
+//~ Modified
+extern M3D Eye3d;
+extern M3F Eye3f;
+extern V3D Zero3d;
+extern V3F Zero3f;
+extern Vector3d Lidar_offset_to_IMU;
+
 
 shared_ptr<Preprocess> p_pre(new Preprocess());
 

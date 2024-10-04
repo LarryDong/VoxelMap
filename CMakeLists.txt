@@ -66,7 +66,9 @@ include_directories(
     ${EIGEN3_INCLUDE_DIR}
     ${PCL_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIRS}
-    include)
+    include
+    /home/larry/voxel_map_ws/src/VoxelMap/src
+)
 
 add_message_files(
     FILES
@@ -75,8 +77,8 @@ add_message_files(
 )
 
 generate_messages(
- DEPENDENCIES
- geometry_msgs
+    DEPENDENCIES
+    geometry_msgs
 )
 
 catkin_package(
@@ -85,7 +87,13 @@ catkin_package(
     INCLUDE_DIRS
 )
 
-add_executable(voxel_mapping_odom src/voxelMapping.cpp  src/preprocess.cpp)
+add_executable(voxel_mapping_odom 
+    src/voxelMapping.cpp  
+    src/preprocess.cpp
+    src/IMU_Processing.cpp
+    src/voxel_map_util.cpp
+    src/voxel_map_util_new.cpp)
+
 target_link_libraries(voxel_mapping_odom ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_include_directories(voxel_mapping_odom PRIVATE ${PYTHON_INCLUDE_DIRS})
 
